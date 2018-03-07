@@ -1,21 +1,8 @@
 import cv2
 import numpy as np 
+from steganolib import bitgen as bg
 
-def bitGen(reader):
-	""" Return the character bit by bit"""
-	for r in reader:
-		asc = ord(r)
-		i = 0
-		while i < 7: # 7 bits in each character
-			yield asc & 1 # returns the right most bit of the character by doing bitwise and with 1
-			asc = asc >> 1 # once the bit has been returned it is shifted to right and removed
-			i+=1           # increment the counter after each yield
-	for i in range(7):     # using null as delemeter to mark the end of the file
-		yield 0
-
-
-
-def az_lsb_embed(filename,imagename):
+def lsb_embed(filename,imagename,mode):
 	"""Embed the message in the image"""
 	# NOTE: cv2 uses BGR instead of RGB 
 
@@ -23,13 +10,16 @@ def az_lsb_embed(filename,imagename):
 	reader = file.read()
 	file.close()
 
-	bits = bitGen(reader)
+	if mode == 1:
+		bits = bg.bitGen_text(filename)
+
+	file_len = next(bits)
 
 	img = cv2.imread(imagename,-1)
 
 	width,height,size = img.shape[1],img.shape[0],img.size
 
-	if len(reader)*7 + 7 > size: # if length of file with the delimeter is more than what image can hold return
+	if file_len*7 + 7 > size: # if length of file with the delimeter is more than what image can hold return
 		print('File size exceeds the range')
 		return
 	end = 0
@@ -37,7 +27,7 @@ def az_lsb_embed(filename,imagename):
 		for i in range(width):
 			pix = img[j,i].copy() 
 			for k in range(3):                      # shorthand to modify BGR in one go
-				if end == len(reader)*7 + 7:        # check where the stream would end
+				if end == file_len*7 + 7:        # check where the stream would end
 					cv2.imwrite('eimage.png',img)	# if stream ends write to the image
 					return 							# return from the function
 				end += 1
@@ -50,7 +40,7 @@ def az_lsb_embed(filename,imagename):
 	
 	
 
-def az_lsb_retv(imagename):
+def lsb_retv(imagename):
 	"""Retrieve data from the injested image"""
 	img = cv2.imread(imagename,-1)
 
@@ -81,6 +71,6 @@ def az_lsb_retv(imagename):
 
 if __name__ == '__main__':
 
-	az_lsb_embed('text.txt','image.jpg')           # call embed function
-	az_lsb_retv('eimage.png')					   # call the retrieval function
+	lsb_embed('text.txt','image.jpg',1)           # call embed function
+	lsb_retv('eimage.png')					   # call the retrieval function
 
